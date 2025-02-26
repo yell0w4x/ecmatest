@@ -23,7 +23,7 @@ async function findTestFiles(pattern) {
     );
 }
 
-async function setupFixtures(scope) {
+async function setupFixtures(scope, testRegistry) {
     const fixtureValues = {};
     for (const [name, fixture] of testRegistry.fixtures) {
         if (fixture.scope != scope) {
@@ -45,7 +45,7 @@ async function setupFixtures(scope) {
     return fixtureValues;
 }
 
-function tearDownFixtures(scope) {
+function tearDownFixtures(scope, testRegistry) {
     for (const [name, fixture] of testRegistry.fixtures) {
         if (fixture.scope != scope) {
             continue;
@@ -71,13 +71,13 @@ async function runTest(testFn) {
 }
 
 async function collectStuff(testFiles) {
-    const regestries = new Map();
+    const registries = new Map();
 
     for (const file of testFiles) {
         console.log(chalk.cyan(`\nCollecting tests in ${file}`));
         try {
             await import(path.resolve(file));
-            regestries.set(file, {
+            registries.set(file, {
                 tests: new Map(testRegistry.tests), 
                 fixtures: new Map(testRegistry.fixtures),
                 markers: new Map(testRegistry.markers)
@@ -90,7 +90,7 @@ async function collectStuff(testFiles) {
         }
     }
 
-    return regestries;
+    return registries;
 }
 
 async function runTests() {
@@ -110,28 +110,25 @@ async function runTests() {
     let failed = 0;
     const failures = [];
 
-    // const regestries = await collectStuff(testFiles);
-    // console.log(regestries);
-    const sessionFixtures = await setupFixtures('session');
-    // Load and run each test file
-    for (const file of testFiles) {
-    // for (const [file, registry] of regestries) {
+    const regestries = await collectStuff(testFiles);
+    console.log(regestries);
+    // const sessionFixtures = await setupFixtures('session');
+    const sessionFixtures = {};
+    for (const [file, registry] of regestries) {
         console.log(chalk.cyan(`\nRunning tests in ${file}`));
 
         try {
-            await import(path.resolve(file));
-            const moduleFixtures = await setupFixtures('module');
+            const moduleFixtures = await setupFixtures('module', registry);
             // Run discovered tests
-            for (const [testName, testMeta] of testRegistry.tests) {
-            // for (const [testName, testMeta] of registry.tests) {
+            for (const [testName, testMeta] of registry.tests) {
                     process.stdout.write(`  ${testMeta.name}: `);
 
-                const functionFixtures = await setupFixtures('function');
+                const functionFixtures = await setupFixtures('function', registry);
                 if (testMeta.params) {
                     // Run parameterized test
                     for (const params of testMeta.params) {
                         const result = await runTest(() => testMeta.fn({ ...functionFixtures, ...moduleFixtures, ...sessionFixtures }, ...params));
-                        tearDownFixtures('function');
+                        tearDownFixtures('function', registry);
                         if (result.status === "passed") {
                             process.stdout.write(chalk.green("✓ "));
                             ++passed;
@@ -145,7 +142,7 @@ async function runTests() {
                 } else {
                     // Run regular test
                     const result = await runTest(() => testMeta.fn({ ...functionFixtures, ...moduleFixtures, ...sessionFixtures }));
-                    tearDownFixtures('function');
+                    tearDownFixtures('function', registry);
                     if (result.status === "passed") {
                         console.log(chalk.green("✓"));
                         passed++;
@@ -156,15 +153,11 @@ async function runTests() {
                     }
                 }
             }
-
-            // Clear registry for next file
-            testRegistry.tests.clear();
-            testRegistry.fixtures.clear();
         } catch (error) {
             console.error(chalk.red(`Error loading test file: ${error.message}`, error.stack));
             process.exit(1);
         } finally {
-            tearDownFixtures('module');
+            tearDownFixtures('module', registry);
         }
     }
 
