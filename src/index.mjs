@@ -36,15 +36,17 @@ export function test(name, fn) {
 // Fixture function - replaces @fixture decorator
 export function fixture(fn, {scope, autouse}={scope: 'function', autouse: false}) {
     const isGen = fn.constructor.name == 'GeneratorFunction';
+    const fixtureName = fn.name;
     const meta = {
-        name: fn.name, 
+        name: fixtureName, 
         fn, 
         isGen, 
         scope,
         params: getFuncParams(fn),
-        autouse
+        autouse,
+        refs: []
     };
-    testRegistry.fixtures.set(fn.name, meta);
+    testRegistry.fixtures.set(fixtureName, meta);
     return fn;
 }
 
