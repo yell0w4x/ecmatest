@@ -1,4 +1,5 @@
 import jestMock from 'jest-mock';
+import jestFT from '@jest/fake-timers';
 import { parseScript } from "esprima";
 
 
@@ -12,7 +13,6 @@ export const testRegistry = {
 function getFuncParams(func) {
     const ast = parseScript(`(${func.toString()})`);
     const params = ast.body[0].expression.params[0]?.properties || [];
-    console.log(params.map(param => param.key.name));
     return params.map(param => param.key.name);
 }
 
@@ -70,8 +70,19 @@ export function parameterize(...params) {
     };
 }
 
+
+export function jestMocker() {
+    return new jestMock.ModuleMocker(globalThis);
+};
+
+
+export function jestFakeTimers(config={ global, config: {} }) {
+    return new jestFT.ModernFakeTimers(config);
+}
+
+
 export function createAutospec(obj) {
-    const mocker = new jestMock.ModuleMocker(globalThis);
+    const mocker = jestMocker();
     return mocker.generateFromMetadata(mocker.getMetadata(obj));
 }
 

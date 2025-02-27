@@ -13,9 +13,9 @@ const __dirname = path.dirname(__filename);
 
 async function findTestFiles(pattern) {
     return await glob([
-            `${pattern}/**/*.test.[m]js`,
-            `${pattern}/**/test.*.[m]js`,
-            `${pattern}/**/test*.[m]js`,
+            `${pattern}/**/*.test.{js,mjs}`,
+            `${pattern}/**/test.*.{js,mjs}`,
+            `${pattern}/**/test*.{js,mjs}`,
         ], { 
             nocase: true, 
             ignore: [`${pattern}/**/node_modules/**`] 
@@ -30,7 +30,7 @@ async function execFixture(fixture) {
     }
 
     for (const ref of fixture.refs) {
-        execFixture(ref);
+        await execFixture(ref);
     }
 
     const refValues = Object.fromEntries(fixture.refs.map(ref => [ref.name, ref.value]));
@@ -51,28 +51,32 @@ async function execFixture(fixture) {
 
 async function setupFixtures(scope, fixtures) {
     for (const fixture of fixtures) {
-        if (fixture.scope != scope) {
+        if (fixture.scope != scope || fixture.hasOwnProperty('value')) {
             continue;
         }
 
-        execFixture(fixture);
+        await execFixture(fixture);
     }
 }
 
 
 function tearDownFixtures(scope, fixtures) {
     for (const fixture of fixtures) {
-        if (fixture.scope != scope) {
+        if (fixture.scope != scope || !fixture.hasOwnProperty('value')) {
             continue;
         }
 
-        if (fixture.isGen && fixture.hasOwnProperty('value')) {
+        tearDownFixtures(scope, fixture.refs);
+
+        if (fixture.isGen) {
             try {
                 fixture.gen.next();
             } catch (e) {
                 console.warn(chalk.bgYellow(' WARN '), `The fixture ${fixture.name} generator tear down failure`, e.stack);
             }
-        } 
+        }
+
+        delete fixture.value;
     }
 }
 
@@ -90,9 +94,11 @@ async function collectStuff(testFiles) {
     const registries = new Map();
 
     for (const file of testFiles) {
-        console.log(chalk.cyan(`\nCollecting tests in ${file}`));
+        process.stdout.write(chalk.blue(`Collecting tests in ${file}... `));
         try {
             await import(path.resolve(file));
+            console.log(chalk.magenta(`${testRegistry.tests.size} found`));
+
             registries.set(file, {
                 tests: new Map(testRegistry.tests), 
                 fixtures: new Map(testRegistry.fixtures),
@@ -101,8 +107,7 @@ async function collectStuff(testFiles) {
             testRegistry.tests.clear();
             testRegistry.fixtures.clear();
         } catch(error) {
-            console.error(chalk.red(`Error loading test file: ${error.message}`, error.stack));
-            process.exit(1);
+            throw new Error(`Error loading test file: ${error.message}`);
         }
     }
 
@@ -161,7 +166,54 @@ function resolveTestFixtures(testMeta, registry) {
 }
 
 
+// export class Patch {
+//     constructor(target, prop, mock) {
+//         this._target = target;
+//         this._prop = prop;
+//         this._mock = mock;
+//         this._original = target[prop];
+//     }
+
+//     enter() {
+//         this._target[this._prop] = this._mock;
+//     }
+
+//     exit() {
+//         this._target[this._prop] = this._original;
+//     }
+// }
+
+
 async function runTests() {
+    async function execTest(testMeta, params) {
+        await setupFixtures('session', testMeta.fixtures);
+        await setupFixtures('module', testMeta.fixtures);
+        await setupFixtures('function', testMeta.fixtures);
+        const fixtureValues = Object.fromEntries(testMeta.fixtures.map(f => [f.name, f.value]));
+        let result = null;
+        if (params) {
+            result = await runTest(() => testMeta.fn({ ...fixtureValues }, ...params));
+        } else {
+            result = await runTest(() => testMeta.fn({ ...fixtureValues }));
+        }
+
+        tearDownFixtures('function', testMeta.fixtures);
+        if (result.status === "passed") {
+            params? process.stdout.write(chalk.green("✓ ")): console.log(chalk.green("✓"));
+            ++passed;
+        } else {
+            params? process.stdout.write(chalk.red("✗ ")): console.log(chalk.red("✗"));
+            ++failed;
+            failures.push({test: testMeta.name, params, error: result.error});
+        }
+    }
+
+    function tearDownSessionFixtures() {
+        for (const [file, registry] of regestries) {
+            tearDownFixtures('session', registry.fixtures.values());
+        }
+    }
+
     const testDir = process.argv[2] || process.cwd();
 
     console.log(chalk.blue("🔍 Discovering tests..."));
@@ -169,7 +221,7 @@ async function runTests() {
 
     if (testFiles.length === 0) {
         console.log(chalk.yellow("No test files found."));
-        process.exit(0);
+        return;
     }
 
     console.log(chalk.blue(`Found ${testFiles.length} test files`));
@@ -185,83 +237,49 @@ async function runTests() {
         }
     }
 
-    for (const [file, registry] of regestries) {
-        console.log(chalk.cyan(`\nRunning tests in ${file}`));
+    try {
+        for (const [file, registry] of regestries) {
+            console.log(chalk.cyan(`\nRunning tests in ${file}`));
+            try {
+                for (const [testName, testMeta] of registry.tests) {
+                    process.stdout.write(`    ${testName}: `);
+                    if (!testMeta.params) {
+                        await execTest(testMeta);
+                        continue;
+                    }
 
-        try {
-            // Run discovered tests
-            for (const [testName, testMeta] of registry.tests) {
-                process.stdout.write(`  ${testName}: `);
-
-                if (testMeta.params) {
                     for (const params of testMeta.params) {
-                        await setupFixtures('session', testMeta.fixtures);
-                        await setupFixtures('module', testMeta.fixtures);
-                        await setupFixtures('function', testMeta.fixtures);
-                        const fixtureValues = Object.fromEntries(testMeta.fixtures.map(f => [f.name, f.value]));
-                        const result = await runTest(() => testMeta.fn({ ...fixtureValues }, ...params));
-                        tearDownFixtures('function', testMeta.fixtures);
-                        if (result.status === "passed") {
-                            process.stdout.write(chalk.green("✓ "));
-                            ++passed;
-                        } else {
-                            process.stdout.write(chalk.red("✗ "));
-                            ++failed;
-                            failures.push({test: testMeta.name, params, error: result.error});
-                        }
+                        await execTest(testMeta, params);
                     }
-                    process.stdout.write("\n");
-                } else {
-                    await setupFixtures('session', testMeta.fixtures);
-                    await setupFixtures('module', testMeta.fixtures);
-                    await setupFixtures('function', testMeta.fixtures);
-                    const fixtureValues = Object.fromEntries(testMeta.fixtures.map(f => [f.name, f.value]));
-                    const result = await runTest(() => testMeta.fn({ ...fixtureValues }));
-                    tearDownFixtures('function', testMeta.fixtures);
-                    if (result.status === "passed") {
-                        console.log(chalk.green("✓"));
-                        ++passed;
-                    } else {
-                        console.log(chalk.red("✗"));
-                        ++failed;
-                        failures.push({test: testMeta.name, error: result.error});
-                    }
+                    console.log();
                 }
+            } finally {
+                tearDownFixtures('module', registry.fixtures.values());
             }
-        } catch (error) {
-            console.error(chalk.red(`Error loading test file: ${error.message}`, error.stack));
-            process.exit(1);
-        } finally {
-            tearDownFixtures('module', registry.fixtures.values());
         }
-    }
-
-    for (const [file, registry] of regestries) {
-        tearDownFixtures('session', registry.fixtures.values());
+    } finally {
+        tearDownSessionFixtures();
     }
 
     console.log(chalk.blue("\nTest Summary:"));
-    console.log(chalk.green(`  Passed: ${passed}`));
-    console.log(chalk.red(`  Failed: ${failed}`));
+    console.log(chalk.green(`    Passed: ${passed}`));
+    console.log(chalk.red(`    Failed: ${failed}`));
 
     if (failures.length > 0) {
         console.log(chalk.red("\nFailures:"));
         failures.forEach((failure) => {
-            console.log(
-                chalk.red(
-                    `\n${failure.test}${
-                        failure.params ? ` (${failure.params})` : ""
-                    }`
-                )
-            );
+            console.log(chalk.red(`\n${failure.test}${failure.params? ` (${failure.params})` : ""}`));
             console.log(chalk.red(`  ${failure.error.message}`));
             console.log(failure.error.stack);
         });
-        process.exit(1);
+        return 1;
     }
 }
 
-runTests().catch((error) => {
+
+try {
+    process.exit(await runTests());
+} catch (error) {
     console.error(chalk.red("Test runner error:", error.stack));
     process.exit(1);
-});
+}

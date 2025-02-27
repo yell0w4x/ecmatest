@@ -1,33 +1,10 @@
-import {
-    test,
-    fixture,
-    mark,
-    parameterize,
-} from "../index.mjs";
+import { test, fixture, mark, parameterize } from "../index.mjs";
+import { Calculator } from "./calculator.mjs";
 import { expect } from 'expect';
 
 
-// Simple Calculator class to test
-class Calculator {
-    add(a, b) {
-        return a + b;
-    }
-    subtract(a, b) {
-        return a - b;
-    }
-    multiply(a, b) {
-        return a * b;
-    }
-    divide(a, b) {
-        if (b === 0) throw new Error("Division by zero");
-        return a / b;
-    }
-}
-
-
-// Create calculator fixture
-fixture(function* sut() {
-    yield new Calculator();
+fixture(function sut() {
+    return new Calculator();
 });
 
 

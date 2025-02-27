@@ -1,6 +1,9 @@
 export class Network {
     send(data) {
-        // console.log(`Sending ${data}...`);
+    }
+
+    recv() {
+        return 'data';
     }
 }
 
@@ -16,4 +19,15 @@ export class Protocol {
     sendBye() {
         this._network.send('bye');
     }
+
+    recvMessage() {
+        const message = this._network.recv();
+        if (message == 'failure') {
+            throw new Error('Some error occurred');
+        }
+
+        return message;
+    }
 }
+
+export default { Network, Protocol };
