@@ -90,14 +90,19 @@ async function runTest(testFn) {
 }
 
 
+function getTestsNum(tests) {
+    return Array.from(tests.values()).reduce((sum, item) => sum + (item.params? item.params.length: 1), 0);
+}
+
+
 async function collectStuff(testFiles) {
     const registries = new Map();
 
     for (const file of testFiles) {
-        process.stdout.write(chalk.blue(`Collecting tests in ${file}... `));
+        process.stdout.write(chalk.blue(`    Collecting tests in ${file}... `));
         try {
             await import(path.resolve(file));
-            console.log(chalk.magenta(`${testRegistry.tests.size} found`));
+            console.log(chalk.magenta(`${getTestsNum(testRegistry.tests)} found`));
 
             registries.set(file, {
                 tests: new Map(testRegistry.tests), 
@@ -224,7 +229,7 @@ async function runTests() {
         return;
     }
 
-    console.log(chalk.blue(`Found ${testFiles.length} test files`));
+    console.log(chalk.blue(`    Found ${testFiles.length} test files`));
 
     let passed = 0;
     let failed = 0;
@@ -268,8 +273,8 @@ async function runTests() {
     if (failures.length > 0) {
         console.log(chalk.red("\nFailures:"));
         failures.forEach((failure) => {
-            console.log(chalk.red(`\n${failure.test}${failure.params? ` (${failure.params})` : ""}`));
-            console.log(chalk.red(`  ${failure.error.message}`));
+            console.log(chalk.red(`\n${failure.test}${failure.params? `   (${failure.params})` : ""}`));
+            console.log(chalk.red(`    ${failure.error.message}`));
             console.log(failure.error.stack);
         });
         return 1;
