@@ -5,6 +5,7 @@ import path from "path";
 import chalk from "chalk";
 import { fileURLToPath } from "url";
 import { testRegistry } from "./index.mjs";
+import cliArgs from 'command-line-parser';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -80,6 +81,7 @@ function tearDownFixtures(scope, fixtures) {
     }
 }
 
+
 async function runTest(testFn) {
     try {
         await testFn();
@@ -119,12 +121,14 @@ async function collectStuff(testFiles) {
     return await connectFixtures(registries);
 }
 
+
 function compareScope(lhv, rhv) {
     if (lhv == rhv) { return 0; }
     if (lhv == 'function' && (rhv == 'module' || rhv == 'session')) { return -1; }
     if (lhv == 'module' && rhv == 'session') { return -1; }
     return 1;
 }
+
 
 async function connectFixtures(registries) {
     for (const [file, registry] of registries) {
@@ -171,6 +175,18 @@ function resolveTestFixtures(testMeta, registry) {
 }
 
 
+function printHelp() {
+    console.log(
+`ECMATest (JSTest) is the pytest-like testing framework for JavaScript built on to of Jest.
+
+Usage: jstest [OPTIONS]\
+
+Options:
+    --dir DIR  The directory to start search from (default: ./)
+    --help     Show help message and exit`);
+}
+
+
 async function main() {
     async function execTest(testMeta, params) {
         await setupFixtures('session', testMeta.fixtures);
@@ -195,16 +211,20 @@ async function main() {
         }
     }
 
-    function tearDownSessionFixtures() {
-        for (const [file, registry] of regestries) {
+    function tearDownSessionFixtures(regestries) {
+        for (const [_, registry] of regestries) {
             tearDownFixtures('session', registry.fixtures.values());
         }
     }
 
-    const testDir = process.argv[2] || process.cwd();
+    const {dir=process.cwd(), help=false} = cliArgs();
+    if (help) {
+        printHelp()
+        return;
+    }
 
     console.log(chalk.blue("🔍 Discovering tests..."));
-    const testFiles = await findTestFiles(testDir);
+    const testFiles = await findTestFiles(dir);
 
     if (testFiles.length === 0) {
         console.log(chalk.yellow("No test files found."));
@@ -245,7 +265,7 @@ async function main() {
             }
         }
     } finally {
-        tearDownSessionFixtures();
+        tearDownSessionFixtures(regestries);
     }
 
     console.log(chalk.blue("\nTest Summary:"));

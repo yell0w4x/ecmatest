@@ -1,14 +1,14 @@
 # ECMATest (JSTest)
 
-Embrace the modern way vibe of making tests. Inspired by amazing pytest and built on top of jest.
+Embrace the modern test-making vibe. Inspired by amazing pytest and built on top of Jest.
 
 ```shell
 npm install ecmatest
 ```
 
-After that `jstest` command should be available. 
-It searches for test files starting from current folder and all the subfolders.
-The filename patterns to search are as follows. The `dir` can be specified by command line.
+After installation, the jstest command will be available in your environment. 
+This command automatically searches for test files in your current directory and all subdirectories, 
+following these filename patterns:
 
 ```javascript
 async function findTestFiles(dir) {
@@ -29,24 +29,25 @@ async function findTestFiles(dir) {
 ### fixture
 
 Fixture is what one uses to setup a test. 
-Fixtures can be chained by refrencing as them as formal parameters by other fixtures or tests.
-But note fixture function should use object unpacking syntax.
+Fixtures can be chained by referencing as them as formal parameters by other fixtures or tests.
+But note fixture function has to use object destructuring syntax.
 The fixture definition order doesn't matter. Fixtures can have scopes `function`, `module`, `session`.
-The only really used fixures are instantiated. 
-It means if you don't refer a fixture in test it will never be be evaluated. 
-This applies transitively to all fixture deps. The wider scoped fixtures can refer to narrower ones.
 
-Fixtures can be generators. This is how one can implement tear down. As you can see below is the `fakeTimers` fixture.
-That when is used will be mock system timers and in the test end will restore real timers.
-Everything above `yield` keyword is the setup section and everything that goes below is tear down section.
+Fixtures are lazily instantiated - they're only evaluated when referenced directly or indirectly by a test. 
+This applies transitively to all fixture dependencies. 
+Broader-scoped fixtures can not reference narrower-scoped ones.
+
+Fixtures can be generators. This is how one can implement tear down. In the example below, the `fakeTimers` 
+fixture mocks system timers during test execution and restores real timers afterward. Everything above the `yield` keyword is the setup section, and everything below is the teardown section.
 
 Fixtures are executed according scope as 1. session, 2. module, 3. function. 
-Note that session scoped fixtures will be alive even when current test module is finished. 
-The fixture's side effect can spread across modules as e.g. if one sets `fakeTimers` fixture scope to `session` 
-the timers will be faked until test session finished.
+Note that session-scoped fixtures persist even after the current test module completes. 
+This means fixture side effects can spread across modules - for example, 
+if you set the `fakeTimers` fixture scope to `session`, timers will remain mocked until the entire test session finishes.
 
-Note it's only possible to refer fixtures from same module. 
-(May be I'll add `conftest.mjs` config files to make global fixtures available and session scope more reasonable).
+Currently, you can only reference fixtures from the same module. 
+(Future plans include adding `conftest.mjs` config files to make global 
+fixtures available and improve session scope functionality).
 
 ```javascript
 import { fixture, createAutospec, jestFakeTimers, jestMocker } from 'ecmatest';
@@ -88,7 +89,7 @@ fixture(function sut({ networkMock }) {
 ### test
 
 Tests are declared via `test` decorator and refer fixtures in the same way as [fixtures](#fixture).
-Tests can use `expect` as in usual way in jest.
+Tests can use `expect` just as you would use in Jest.
 
 ```javascript
 import { expect } from 'expect';
@@ -120,16 +121,17 @@ test(
 ### jest wrappers
 
 To mock ECMAScript class or an Object one can use `createAutospec`. 
-To mock a class `createAutospec(SomeClass.prototype)`, to mock an object use it directly like `createAutospec(someObject)`.
-Under the hood it uses jest mocker to create mocks. The implementation is below and quite simple.
-They are compartible with `except` as they are jest mocks and 
-provide api you can find out from jest [docs](https://jestjs.io/docs/mock-function-api#methods).
+For classes, use `createAutospec(SomeClass.prototype)`; For objects use `createAutospec(someObject)` directly.
 
-Object returned by `jestMocker` has the interface described [here](https://jestjs.io/docs/jest-object#mock-functions) in jest docs.
+Under the hood, this uses Jest's mocking functionality. 
+The implementation is straightforward, as shown below. 
+The mocks are compatible with `expect` since they are Jest mocks and provide 
+the API documented in the Jest [documentation](https://jestjs.io/docs/mock-function-api#methods).
+
+Object returned by `jestMocker` has the interface described [here](https://jestjs.io/docs/jest-object#mock-functions) in the Jest docs.
 For `fakeTimers` see [this](https://jestjs.io/docs/jest-object#jestusefaketimersfaketimersconfig). 
-Note that out of the box the only `advanceTimers` (provided by jest `ModernFakeTimers` class) are available. 
-But it's possible to create `LegacyFakeTimers` in the same way it's done for modern timers. But note the config is bit different.
-
+Note that out of the box the only `advanceTimers` (provided by jest `ModernFakeTimers` class) is available. 
+But it's possible to create `LegacyFakeTimers` in the same way it's done for modern timers, though the config is slighly different.
 
 ```javascript
 import jestFT from '@jest/fake-timers';
@@ -151,17 +153,18 @@ export function createAutospec(obj) {
 }
 ```
 
-[!NOTE]
-Object returned by `jestMocker()` has these methods: `clearAllMocks()`, `resetAllMocks()`, `restoreAllMocks()`. 
-Please note they are related to this exact object, so the action applies only to the mocks created by this particular object. 
-Actually in this paradigm they are likely not necessary as for new test invocation new mocks are created while old are destroyed in tear down phase. 
-They can only have point for `module` and `session` scoped mocks.
+> [!NOTE]
+> The object returned by `jestMocker()` has these methods: `clearAllMocks()`, `resetAllMocks()`, `restoreAllMocks()`. 
+> These methods only affect mocks created by that specific mocker instance. 
+> In practice, they're rarely needed in this paradigm since new mocks are created for 
+> each test while old ones are destroyed during teardown.
+> They may only be useful for `module` and `session` scoped mocks.
 
 ## What's next...
 
-1. Implement `conftest.mjs` feature.
-2. Make jest runner.
-3. Add fixture parametrization from within test setup.
-4. Add markers feature.
+1. Implement `conftest.mjs` feature
+2. Make Jest runner
+3. Add fixture parametrization from within test setup
+4. Add markers feature
 
 See examples in `./examples` folder.

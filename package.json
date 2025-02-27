@@ -2,7 +2,7 @@
   "name": "ecmatest",
   "version": "0.0.1",
   "license": "MIT",
-  "description": "A pytest-like testing framework for JavaScript",
+  "description": "A pytest-like testing framework for JavaScript build on top of Jest",
   "main": "index.mjs",
   "bin": {
     "jstest": "./src/cli.mjs"
@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "chalk": "^5.3.0",
+    "command-line-parser": "^0.2.10",
     "contextlib": "^0.4.0",
     "esprima": "^4.0.1",
     "expect": "^29.7.0",
