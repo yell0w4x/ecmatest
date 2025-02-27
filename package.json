@@ -1,10 +1,11 @@
 {
   "name": "ecmatest",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "license": "MIT",
   "homepage": "https://github.com/yell0w4x/ecmatest#readme",
   "description": "A pytest-like testing framework for JavaScript build on top of Jest",
   "main": "index.mjs",
+  "keywords": ["pytest", "test", "fixture", "jest", "expect", "jstest", "ecmatest"],
   "bin": {
     "jstest": "./src/cli.mjs"
   },

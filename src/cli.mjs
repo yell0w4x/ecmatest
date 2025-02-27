@@ -179,7 +179,7 @@ function printHelp() {
     console.log(
 `ECMATest (JSTest) is the pytest-like testing framework for JavaScript built on to of Jest.
 
-Usage: jstest [OPTIONS]\
+Usage: jstest [OPTIONS]
 
 Options:
     --dir DIR  The directory to start search from (default: ./)
