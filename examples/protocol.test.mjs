@@ -17,11 +17,20 @@ fixture(function* fakeTimers({theBeginning}) {
 }, {scope: 'module'});
 
 
-fixture(function network({ mocker }) {
+fixture(function networkMock({ mocker }) {
     const mock = createAutospec(Network.prototype);
-    // mock.recv.mockReturnValue('failure');
     mock.recv = mocker.fn(() => 'failure');
+    // or
+    // mock.recv.mockReturnValue('failure');
     return mock;
+});
+
+
+fixture(function realNetworkWithOnlySendMocked({ mocker }) {
+    const network = new Network();
+    const sendMock = mocker.spyOn(network, 'send');
+    sendMock.mockReturnValue(0);
+    return [network, sendMock];
 });
 
 
@@ -30,20 +39,25 @@ fixture(function mocker() {
 }, {scope: 'session'})
 
 
-fixture(function sut({ network }) {
-    return new Protocol(network);
+fixture(function sut({ networkMock }) {
+    return new Protocol(networkMock);
 });
 
 
-test("Send hello", ({ sut, network }) => {
+fixture(function sutWithRealNetwork({ realNetworkWithOnlySendMocked }) {
+    return new Protocol(realNetworkWithOnlySendMocked[0]);
+});
+
+
+test("Send hello", ({ sut, networkMock }) => {
     sut.sendHello();
-    expect(network.send).toBeCalledWith('hello');
+    expect(networkMock.send).toBeCalledWith('hello');
 });
 
 
-test("Receive must throw in case of failure", ({ sut, network }) => {
+test("Receive must throw in case of failure", ({ sut, networkMock }) => {
     expect(() => sut.recvMessage()).toThrow('Some error occurred');
-    expect(network.recv).toBeCalled();
+    expect(networkMock.recv).toBeCalled();
 });
 
 
@@ -52,4 +66,12 @@ test("Fake timers test", ({fakeTimers, theBeginning}) => {
 
     fakeTimers.advanceTimersByTime(60000);
     expect(new Date()).toEqual(new Date(60000));
+});
+
+
+test('Send must throw if no data have been sent', ({ sutWithRealNetwork, realNetworkWithOnlySendMocked }) => {
+    const [network, sendMock] = realNetworkWithOnlySendMocked;
+    expect(network instanceof Network).toBeTruthy();
+    expect(() => sutWithRealNetwork.sendBye()).toThrow('Nothing has been sent');
+    expect(sendMock).toBeCalledWith('bye');
 });

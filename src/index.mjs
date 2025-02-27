@@ -85,37 +85,3 @@ export function createAutospec(obj) {
     const mocker = jestMocker();
     return mocker.generateFromMetadata(mocker.getMetadata(obj));
 }
-
-
-export class Patch {
-    constructor(target, prop, mock) {
-        this._target = target;
-        this._prop = prop;
-        this._mock = mock;
-        this._original = target[prop];
-    }
-
-    enter() {
-        this._target[this._prop] = this._mock;
-    }
-
-    exit() {
-        this._target[this._prop] = this._original;
-    }
-
-    original() {
-        return this._original;
-    }
-
-    target() {
-        return this._target;
-    }
-
-    prop() {
-        return this._prop;
-    }
-
-    mock() {
-        return this._mock;
-    }
-}

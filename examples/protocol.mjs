@@ -1,5 +1,6 @@
 export class Network {
     send(data) {
+        return 10;
     }
 
     recv() {
@@ -13,11 +14,15 @@ export class Protocol {
     }
 
     sendHello() {
-        this._network.send('hello');
+        if (this._network.send('hello') == 0) {
+            throw Error('Nothing has been sent');
+        }
     }
 
     sendBye() {
-        this._network.send('bye');
+        if (this._network.send('bye') == 0) {
+            throw Error('Nothing has been sent');
+        }
     }
 
     recvMessage() {

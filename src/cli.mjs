@@ -11,14 +11,14 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 
-async function findTestFiles(pattern) {
+async function findTestFiles(dir) {
     return await glob([
-            `${pattern}/**/*.test.{js,mjs}`,
-            `${pattern}/**/test.*.{js,mjs}`,
-            `${pattern}/**/test*.{js,mjs}`,
+            `${dir}/**/*.test.{js,mjs}`,
+            `${dir}/**/test.*.{js,mjs}`,
+            `${dir}/**/test*.{js,mjs}`,
         ], { 
             nocase: true, 
-            ignore: [`${pattern}/**/node_modules/**`] 
+            ignore: [`${dir}/**/node_modules/**`] 
         }
     );
 }
@@ -171,25 +171,7 @@ function resolveTestFixtures(testMeta, registry) {
 }
 
 
-// export class Patch {
-//     constructor(target, prop, mock) {
-//         this._target = target;
-//         this._prop = prop;
-//         this._mock = mock;
-//         this._original = target[prop];
-//     }
-
-//     enter() {
-//         this._target[this._prop] = this._mock;
-//     }
-
-//     exit() {
-//         this._target[this._prop] = this._original;
-//     }
-// }
-
-
-async function runTests() {
+async function main() {
     async function execTest(testMeta, params) {
         await setupFixtures('session', testMeta.fixtures);
         await setupFixtures('module', testMeta.fixtures);
@@ -283,7 +265,7 @@ async function runTests() {
 
 
 try {
-    process.exit(await runTests());
+    process.exit(await main());
 } catch (error) {
     console.error(chalk.red("Test runner error:", error.stack));
     process.exit(1);
