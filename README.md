@@ -6,7 +6,7 @@ Embrace the modern test-making vibe. Inspired by amazing pytest and built on top
 npm install ecmatest
 ```
 
-After installation, the jstest command will be available in your environment. 
+After installation, the `jstest` command will be available in your environment. 
 This command automatically searches for test files in your current directory and all subdirectories, 
 following these filename patterns:
 
@@ -29,7 +29,7 @@ async function findTestFiles(dir) {
 ### fixture
 
 Fixture is what one uses to setup a test. 
-Fixtures can be chained by referencing as them as formal parameters by other fixtures or tests.
+Fixtures can be chained by referencing them as formal parameters by other fixtures or tests.
 But note fixture function has to use object destructuring syntax.
 The fixture definition order doesn't matter. Fixtures can have scopes `function`, `module`, `session`.
 
@@ -50,7 +50,7 @@ Currently, you can only reference fixtures from the same module.
 fixtures available and improve session scope functionality).
 
 ```javascript
-import { fixture, createAutospec, jestFakeTimers, jestMocker } from 'ecmatest';
+import { fixture, test, createAutospec, jestFakeTimers, jestMocker } from 'ecmatest';
 
 
 fixture(function theBeginning() {
@@ -94,9 +94,18 @@ Tests can use `expect` just as you would use in Jest.
 ```javascript
 import { expect } from 'expect';
 
+
 test("Send hello", ({ sut, networkMock }) => {
     sut.sendHello();
     expect(networkMock.send).toBeCalledWith('hello');
+});
+
+
+test("Fake timers test", ({fakeTimers, theBeginning}) => {
+    expect(new Date()).toEqual(theBeginning);
+
+    fakeTimers.advanceTimersByTime(60000);
+    expect(new Date()).toEqual(new Date(60000));
 });
 
 ```
