@@ -174,6 +174,7 @@ export function createAutospec(obj) {
 1. Implement `conftest.mjs` feature
 2. Make Jest runner
 3. Add fixture parametrization from within test setup
-4. Add markers feature
+4. Add hooks
+5. Add markers feature
 
 See examples in `./examples` folder.
