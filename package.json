@@ -1,6 +1,6 @@
 {
   "name": "ecmatest",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "license": "MIT",
   "homepage": "https://github.com/yell0w4x/ecmatest#readme",
   "description": "A pytest-like testing framework for JavaScript build on top of Jest",
