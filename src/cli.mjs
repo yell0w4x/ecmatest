@@ -67,8 +67,6 @@ function tearDownFixtures(scope, fixtures) {
             continue;
         }
 
-        tearDownFixtures(scope, fixture.refs);
-
         if (fixture.isGen) {
             try {
                 fixture.gen.next();
@@ -78,6 +76,7 @@ function tearDownFixtures(scope, fixtures) {
         }
 
         delete fixture.value;
+        tearDownFixtures(scope, fixture.refs);
     }
 }
 
